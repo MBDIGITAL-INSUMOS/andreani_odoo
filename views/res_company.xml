@@ -9,6 +9,9 @@
                 <data>
                     <notebook>
                         <page string="Andreani">
+                            <group>
+                                <field name="sucursalOrigen" />
+                            </group>
                         </page>
                     </notebook>
                 </data>
