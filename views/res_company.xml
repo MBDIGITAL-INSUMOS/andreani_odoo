@@ -10,6 +10,10 @@
                     <notebook>
                         <page string="Andreani">
                             <group>
+                                <field name="codigoCliente" />
+                                <field name="contratoSucursal" />
+                                <field name="contratoDomicilio" />
+                                <field name="contratoUrgente" />
                                 <field name="sucursalOrigen" />
                             </group>
                         </page>

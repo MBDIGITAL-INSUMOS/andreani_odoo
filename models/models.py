@@ -8,7 +8,11 @@ import requests
 class ResCompany(models.Model):
     _inherit = 'res.company'
 
-    sucursalOrigen = fields.Char(string='Sucursal de Origen', help='Sucursal desde donde se sale el pedido. Opcional')
+    sucursalOrigen = fields.Char(string='Sucursal de Origen', help='Sucursal desde donde sale el pedido. Opcional')
+    codigoCliente = fields.Char(string='Código de Cliente', help='Código de Cliente Andreani. Obligatorio.')
+    contratoSucursal = fields.Char(string='Contrato para envíos a sucursal', help='Número de Contrato para envíos a sucursal Andreani. Obligatorio.')
+    contratoDomicilio = fields.Char(string='Contrato para envíos estándar a domicilio', help='Número de Contrato para envíos a domicilio. Obligatorio.')
+    contratoUrgente = fields.Char(string='Contrato para envíos urgentes a domicilio', help='Número de Contrato para envíos a sucursal de forma urgente. Obligatorio.')
 
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
@@ -64,20 +68,51 @@ class DeliveryCarrier(models.Model):
 
         r = requests.get(url = self.urlRateShipment +
         '?cpDestino=' + cpDestino + 
-        '&contrato=400006709' +
-        '&cliente=CL0003750' +
+        '&contrato=' + order.company_id.contratoDomicilio +
+        '&cliente=' + order.company_id.codigoCliente +
         '&sucursalOrigen=' + sucursalOrigen + bultosString)
         
         if r.status_code == 200:
             data = r.json()
-            raise ValidationError(data['tarifaConIva']['total'])
+            return {
+                'success': True,
+                'price': float(data['tarifaSinIva']['total']),
+                'error_message': False,
+                'warning_message': False
+            }
         elif r.status_code == 401:
-            raise ValidationError('Error de autorización, revise sus credenciales.')
+            return {
+                'success': False,
+                'price': 0,
+                'error_message': 'Error de autorización, revise sus credenciales.',
+                'warning_message': False
+            }
         elif r.status_code == 408:
-            raise ValidationError('Error. La solicitud está tomando demasiado tiempo en procesarse, intente nuevamente.')
+            return {
+                'success': False,
+                'price': 0,
+                'error_message': 'Error. La solicitud está tomando demasiado tiempo en procesarse, intente nuevamente.',
+                'warning_message': False
+            }
         elif r.status_code == 500:
-            raise ValidationError('Error interno. Intente nuevamente.')
+            return {
+                'success': False,
+                'price': 0,
+                'error_message': 'Error interno. Intente nuevamente.',
+                'warning_message': False
+            }
         elif r.status_code == 503:
-            raise ValidationError('Error interno. El servidor se encuentra saturado, espere unos minutos y vuelva a intentarlo.')
+            return {
+                'success': False,
+                'price': 0,
+                'error_message': 'Error interno. El servidor se encuentra saturado, espere unos minutos y vuelva a intentarlo.',
+                'warning_message': False
+            }
         else:
-            raise ValidationError('Algo salió mal. Contacte con su Administrador. Error número ' + str(r.status_code) + '. ' + str(r.detail))
+            data = r.json()
+            return {
+                'success': False,
+                'price': 0,
+                'error_message': 'Algo salió mal. Error n° ' + str(r.status_code) + '. ' + str(data['detail']),
+                'warning_message': False
+            }
