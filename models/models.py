@@ -24,7 +24,7 @@ class ProductTemplate(models.Model):
 class DeliveryCarrier(models.Model):
     _inherit = 'delivery.carrier'
 
-    urlRateShipment = 'https://api.qa.andreani.com/v1/tarifas'
+    urlRateShipment = 'https://api.andreani.com/v1/tarifas'
 
     delivery_type = fields.Selection(selection_add=[('andreani', 'Andreani')])
 
@@ -40,7 +40,7 @@ class DeliveryCarrier(models.Model):
             cpDestino = order.partner_shipping_id.zip
 
         if order.company_id.sucursalOrigen:
-            sucursalOrigen = order.company_id.sucursalOrigen
+            sucursalOrigen = '&sucursalOrigen=' + order.company_id.sucursalOrigen
 
         if order.order_line:
             for p in order.order_line:
@@ -66,11 +66,17 @@ class DeliveryCarrier(models.Model):
             bultosString += '&bultos[' + str(n) + '][anchoCm]=' + str(b['anchoCm'])
             bultosString += '&bultos[' + str(n) + '][altoCm]=' + str(b['altoCm'])
 
+        print(self.urlRateShipment +
+        '?cpDestino=' + cpDestino + 
+        '&contrato=' + order.company_id.contratoDomicilio +
+        '&cliente=' + order.company_id.codigoCliente
+        + sucursalOrigen + bultosString)
+
         r = requests.get(url = self.urlRateShipment +
         '?cpDestino=' + cpDestino + 
         '&contrato=' + order.company_id.contratoDomicilio +
-        '&cliente=' + order.company_id.codigoCliente +
-        '&sucursalOrigen=' + sucursalOrigen + bultosString)
+        '&cliente=' + order.company_id.codigoCliente
+        + sucursalOrigen + bultosString)
         
         if r.status_code == 200:
             data = r.json()
