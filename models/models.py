@@ -89,7 +89,7 @@ class DeliveryCarrier(models.Model):
             data = r.json()
             return {
                 'success': True,
-                'price': float(data['tarifaSinIva']['total']),
+                'price': float(data['tarifaConIva']['total']),
                 'error_message': False,
                 'warning_message': False
             }
