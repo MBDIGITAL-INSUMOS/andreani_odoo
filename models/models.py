@@ -14,12 +14,10 @@ class ResCompany(models.Model):
     contratoDomicilio = fields.Char(string='Contrato para envíos estándar a domicilio', help='Número de Contrato para envíos a domicilio. Obligatorio.')
     contratoUrgente = fields.Char(string='Contrato para envíos urgentes a domicilio', help='Número de Contrato para envíos a sucursal de forma urgente. Obligatorio.')
 
-class ProductTemplate(models.Model):
-    _inherit = 'product.template'
+class SaleOrderLine(models.Model):
+    _inherit = 'sale.order.line'
 
-    ancho_caja = fields.Float(string='Ancho Caja', help='Ancho de la Caja en Centímetros')
-    alto_caja = fields.Float(string='Alto Caja', help='Alto de la Caja en Centímetros')
-    largo_caja = fields.Float(string='Largo Caja', help='Largo de la Caja en Centímetros')
+    bulto_andreani = fields.Integer('Bulto para Andreani', default=1, help='Número de Bulto para enviar por Andreani. Productos con el mismo número serán agrupados bajo el mismo bulto.')
 
 class DeliveryCarrier(models.Model):
     _inherit = 'delivery.carrier'
@@ -44,27 +42,36 @@ class DeliveryCarrier(models.Model):
 
         if order.order_line:
             for p in order.order_line:
-                if p.product_id.weight == False:
-                    raise ValidationError('Error: El producto ' + p.product_id.name + ' debe tener peso en Kilos.')
-                if p.product_id.product_tmpl_id.largo_caja == False or p.product_id.product_tmpl_id.ancho_caja == False or p.product_id.product_tmpl_id.alto_caja == False:
-                    raise ValidationError('Error: Las dimensiones de la caja del producto ' + p.product_id.name + ' no están establecidas.')
+                if p.product_id.weight == False or p.product_id.volume == False:
+                    raise ValidationError('Error: El producto ' + p.product_id.name + ' debe tener peso en Kilos o Volumen en métros cúbicos.')
 
-                bultos.append({
-                    'valorDeclarado': p.price_total,
-                    'kilos': p.product_id.weight * p.product_uom_qty,
-                    'largoCm': p.product_id.product_tmpl_id.largo_caja * p.product_uom_qty,
-                    'anchoCm': p.product_id.product_tmpl_id.ancho_caja,
-                    'altoCm': p.product_id.product_tmpl_id.alto_caja,
-                })
+                if bultos:
+                    for bulto in bultos:
+                        if bulto['num'] == p.bulto_andreani:
+                            bulto['valorDeclarado'] += p.price_total
+                            bulto['kilos'] += p.product_id.weight * p.product_uom_qty
+                            bulto['volumen'] += p.product_id.volume * 1000000 * p.product_uom_qty
+                        else:
+                            bultos.append({
+                                'valorDeclarado': p.price_total,
+                                'kilos': p.product_id.weight * p.product_uom_qty,
+                                'volumen': p.product_id.volume * 1000000 * p.product_uom_qty,
+                                'num': p.bulto_andreani
+                            })
+                else:
+                    bultos.append({
+                        'valorDeclarado': p.price_total,
+                        'kilos': p.product_id.weight * p.product_uom_qty,
+                        'volumen': p.product_id.volume * 1000000 * p.product_uom_qty,
+                        'num': p.bulto_andreani
+                    })
         else:
             raise ValidationError('No se puede enviar una orden sin pedidos.')
 
         for n, b in enumerate(bultos, start=0):
             bultosString += '&bultos[' + str(n) + '][valorDeclarado]=' + str(b['valorDeclarado'])
             bultosString += '&bultos[' + str(n) + '][kilos]=' + str(b['kilos'])
-            bultosString += '&bultos[' + str(n) + '][largoCm]=' + str(b['largoCm'])
-            bultosString += '&bultos[' + str(n) + '][anchoCm]=' + str(b['anchoCm'])
-            bultosString += '&bultos[' + str(n) + '][altoCm]=' + str(b['altoCm'])
+            bultosString += '&bultos[' + str(n) + '][volumen]=' + str(b['volumen'])
 
         print(self.urlRateShipment +
         '?cpDestino=' + cpDestino + 
